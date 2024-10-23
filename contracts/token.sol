@@ -89,25 +89,23 @@ contract GigaTronix is ERC20Interface {
     uint8 public decimals;
     uint256 private _totalSupply = 0;
     address public owner;
-    bool public activeStatus = true;
     uint256 private _maxSupply;
 
     event Active(address msgSender);
     event Reset(address msgSender);
-    event Burn(address indexed from, uint256 value);
-    event Freeze(address indexed from, uint256 value);
-    event Unfreeze(address indexed from, uint256 value);
 
-    mapping(address => uint256) public balances;
-    mapping(address => uint256) public freezeList;
-    mapping(address => mapping(address => uint256)) public allowed;
+    mapping(address => uint256) private balances;
+    mapping(address => mapping(address => uint256)) private allowed;
 
     constructor() {
         symbol = "GTX";
         name = "Giga Tronix";
         decimals = 18;
-        _maxSupply = 50000000000 * 10 ** uint256(decimals);
+        _maxSupply = 5000000000 * 10 ** uint256(decimals);
+        _totalSupply = _maxSupply;
         owner = msg.sender;
+        balances[owner] = _maxSupply;
+        emit Transfer(address(0), owner, _maxSupply);
     }
 
     function isOwner(address add) public view returns (bool) {
@@ -117,21 +115,6 @@ contract GigaTronix is ERC20Interface {
     modifier onlyOwner() {
         require(isOwner(msg.sender), "Caller is not the owner");
         _;
-    }
-
-    modifier onlyActive() {
-        require(activeStatus, "Contract is not active");
-        _;
-    }
-
-    function activeMode() public onlyOwner {
-        activeStatus = true;
-        emit Active(msg.sender);
-    }
-
-    function resetMode() public onlyOwner {
-        activeStatus = false;
-        emit Reset(msg.sender);
     }
 
     function totalSupply() public view override returns (uint256) {
@@ -148,10 +131,6 @@ contract GigaTronix is ERC20Interface {
         return balances[tokenOwner];
     }
 
-    function frozenBalanceOf(address tokenOwner) public view returns (uint256) {
-        return freezeList[tokenOwner];
-    }
-
     function allowance(
         address tokenOwner,
         address spender
@@ -162,13 +141,9 @@ contract GigaTronix is ERC20Interface {
     function transfer(
         address to,
         uint256 value
-    ) public override onlyActive returns (bool success) {
+    ) public override returns (bool success) {
         require(to != address(0), "Invalid address");
         require(value > 0, "Invalid value");
-        require(
-            balances[msg.sender].sub(freezeList[msg.sender]) >= value,
-            "Insufficient available balance"
-        );
 
         balances[msg.sender] = balances[msg.sender].sub(value);
         balances[to] = balances[to].add(value);
@@ -179,11 +154,41 @@ contract GigaTronix is ERC20Interface {
     function approve(
         address spender,
         uint256 value
-    ) public override onlyActive returns (bool success) {
+    ) public override returns (bool success) {
         require(value > 0, "Invalid value");
 
         allowed[msg.sender][spender] = value;
         emit Approval(msg.sender, spender, value);
+        return true;
+    }
+    function increaseAllowance(
+        address spender,
+        uint256 addedValue
+    ) public returns (bool) {
+        require(spender != address(0), "Invalid address");
+        require(addedValue > 0, "Invalid value");
+
+        allowed[msg.sender][spender] = allowed[msg.sender][spender].add(
+            addedValue
+        );
+        emit Approval(msg.sender, spender, allowed[msg.sender][spender]);
+        return true;
+    }
+    function decreaseAllowance(
+        address spender,
+        uint256 subtractedValue
+    ) public returns (bool) {
+        require(spender != address(0), "Invalid address");
+        require(subtractedValue > 0, "Invalid value");
+        require(
+            subtractedValue <= allowed[msg.sender][spender],
+            "Allowance exceeded"
+        );
+
+        allowed[msg.sender][spender] = allowed[msg.sender][spender].sub(
+            subtractedValue
+        );
+        emit Approval(msg.sender, spender, allowed[msg.sender][spender]);
         return true;
     }
 
@@ -191,13 +196,9 @@ contract GigaTronix is ERC20Interface {
         address from,
         address to,
         uint256 value
-    ) public override onlyActive returns (bool success) {
+    ) public override returns (bool success) {
         require(to != address(0), "Invalid address");
         require(value > 0, "Invalid value");
-        require(
-            balances[from].sub(freezeList[from]) >= value,
-            "Insufficient available balance"
-        );
         require(value <= allowed[from][msg.sender], "Allowance exceeded");
 
         balances[from] = balances[from].sub(value);
@@ -207,65 +208,16 @@ contract GigaTronix is ERC20Interface {
         return true;
     }
 
-    function burn(uint256 value) public onlyActive returns (bool success) {
-        require(
-            balances[msg.sender].sub(freezeList[msg.sender]) >= value,
-            "Insufficient available balance"
+    function withdrawEth() external onlyOwner {
+        (bool success, ) = payable(owner).call{value: address(this).balance}(
+            ""
         );
-        require(value > 0, "Invalid value");
-
-        balances[msg.sender] = balances[msg.sender].sub(value);
-        _totalSupply = _totalSupply.sub(value);
-        emit Burn(msg.sender, value);
-        return true;
+        require(success, "Transfer failed.");
     }
-
-    function freeze(
-        address account,
-        uint256 value
-    ) public onlyOwner returns (bool success) {
-        require(
-            balances[account].sub(freezeList[account]) >= value,
-            "Insufficient available balance to freeze"
-        );
-        require(account != address(0), "Invalid address");
-
-        freezeList[account] = freezeList[account].add(value);
-        emit Freeze(account, value);
-        return true;
-    }
-
-    function unfreeze(
-        address account,
-        uint256 value
-    ) public onlyOwner returns (bool success) {
-        require(
-            freezeList[account] >= value,
-            "Insufficient frozen balance to unfreeze"
-        );
-        require(account != address(0), "Invalid address");
-
-        freezeList[account] = freezeList[account].sub(value);
-        emit Unfreeze(account, value);
-        return true;
-    }
-
-    function mint(address to, uint256 value) public onlyOwner returns (bool) {
-        require(to != address(0), "Invalid address");
-        require(value > 0, "Invalid value");
-        require(
-            _totalSupply.add(value) <= _maxSupply,
-            "Minting exceeds max supply"
-        );
-
-        _totalSupply = _totalSupply.add(value);
-        balances[to] = balances[to].add(value);
-        emit Transfer(address(0), to, value);
-        emit Mint(to, value);
-        return true;
-    }
-
-    receive() external payable {
-        revert("Cannot receive Ether");
+    function withdrawTokens(
+        address _token,
+        uint256 _amount
+    ) external onlyOwner {
+        ERC20Interface(_token).transfer(owner, _amount);
     }
 }
