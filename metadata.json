@@ -1,7 +1,16 @@
-
 {
-  "name": "Giga",
-  "symbol": "GIGA",
-  "description": "GIGA: A fearless token led by Giga, the digital astronaut ready to conquer the crypto world.",
-  "image": "https://raw.githubusercontent.com/Giga-Tronix/contracts/refs/heads/master/token.png"
+    "name": "Giga",
+    "symbol": "GIGA",
+    "description": "GIGA: A fearless token led by Giga, the digital astronaut ready to conquer the crypto world.",
+    "image": "https://raw.githubusercontent.com/Giga-Tronix/contracts/refs/heads/master/token.png",
+    "extensions": {
+        "website": "https://giga-coin.com",
+        "twitter": "https://x.com/mr_giga_coin",
+        "telegram": "https://t.me/mr_giga_coin"
+    },
+    "tags": [],
+    "creator": {
+        "name": "Smart Host Token Creator",
+        "site": "https://token.smartapp.tr"
+    }
 }
