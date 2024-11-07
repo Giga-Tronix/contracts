@@ -2,7 +2,8 @@
     "name": "Giga",
     "symbol": "GIGA",
     "description": "GIGA: A fearless token led by Giga, the digital astronaut ready to conquer the crypto world.",
-    "image": "https://raw.githubusercontent.com/Giga-Tronix/contracts/refs/heads/master/token.png",
+    "image": "https://bafybeicaxf2wa6pbfhyed2qwxddwk5zhfo5lybked3heyfmdlewgbq22eu.ipfs.w3s.link/logo.png",
+    "website": "https://giga-coin.com",
     "extensions": {
         "website": "https://giga-coin.com",
         "twitter": "https://x.com/mr_giga_coin",
